@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Ponto — Vendas & Estoque</title>
+<meta name="theme-color" content="#0e1013">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ponto">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  :root{
+    --bg: #0e1013;
+    --panel: #16191e;
+    --panel2: #1c2027;
+    --line: #262b33;
+    --text: #e7e9ec;
+    --muted: #8a919c;
+    --gold: #d4a72c;
+    --gold-bright: #ffce5b;
+    --gold-dim: #8a6f3f;
+    --green: #4caf7d;
+    --red: #d1594a;
+    --blue: #5b8fd1;
+    --mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    padding-bottom:76px;
+  }
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:rgba(14,16,19,0.92);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+    padding:16px 18px 12px;
+  }
+  header.top .brand{ display:flex; align-items:baseline; gap:8px; }
+  header.top .brand .mark{
+    font-family:var(--mono); color:var(--gold); font-size:13px; letter-spacing:2px;
+    border:1px solid var(--gold-dim); padding:2px 6px; border-radius:3px;
+  }
+  header.top h1{ font-size:19px; font-weight:600; margin:0; letter-spacing:-0.2px; }
+  header.top .sub{ color:var(--muted); font-size:12.5px; margin-top:4px; font-family:var(--mono); }
+  header.top .sub.active-client{ color:var(--gold); }
+
+  main{ padding:16px 14px 30px; max-width:720px; margin:0 auto; }
+  .view{ display:none; }
+  .view.active{ display:block; animation:fade .18s ease; }
+  @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
+  .section-title{
+    font-size:11px; text-transform:uppercase; letter-spacing:1.4px;
+    color:var(--muted); margin:22px 0 10px; font-family:var(--mono);
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .section-title:first-child{ margin-top:0; }
+
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px; }
+
+  /* ---- barra de cliente ativo (fixa no topo das abas Marcas/Vendas) ---- */
+  .active-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    background:#1b1811; border:1px solid var(--gold-dim); border-radius:10px;
+    padding:11px 13px; margin-bottom:14px;
+  }
+  .active-bar .who{ font-size:13.5px; }
+  .active-bar .who b{ color:var(--gold); }
+  .active-bar .who .t{ color:var(--muted); font-family:var(--mono); font-size:11.5px; display:block; margin-top:2px;}
+  .active-bar button{ background:transparent; border:1px solid var(--line); color:var(--muted); font-size:11.5px; padding:6px 10px; border-radius:7px; }
+
+  .no-client-banner{
+    background:var(--panel); border:1px dashed var(--line); border-radius:10px;
+    padding:18px 14px; text-align:center; margin-bottom:14px;
+  }
+  .no-client-banner p{ color:var(--muted); font-size:13px; margin:0 0 10px; }
+
+  .client-pick-row{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:13px 14px; margin-bottom:8px;
+  }
+  .client-pick-row .name{ font-weight:600; font-size:15px; }
+  .client-pick-row .date{ color:var(--muted); font-size:11.5px; font-family:var(--mono); margin-top:2px; }
+
+  .finish-bar{
+    position:sticky; bottom:76px; z-index:15;
+    background:var(--panel); border:1px solid var(--gold-dim);
+    border-radius:10px; padding:12px 14px; margin-top:16px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .finish-bar .lbl{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .finish-bar .tot{ font-family:var(--mono); font-size:17px; color:var(--gold); font-weight:700; }
+
+  /* ---- Marcas ---- */
+  .frete-card{
+    background:linear-gradient(180deg, #1b1811, #16191e);
+    border:1px solid var(--gold-dim); border-radius:10px;
+    padding:13px 14px; margin-bottom:10px;
+    display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;
+  }
+  .frete-card.added{ border-color:#2f7d52; }
+  .frete-card .label{ font-size:10.5px; text-transform:uppercase; letter-spacing:1px; color:var(--gold); font-family:var(--mono); }
+  .frete-card .name{ font-weight:600; font-size:15px; margin-top:2px; }
+  .frete-card .right{ text-align:right; }
+  .frete-card .val{ font-family:var(--mono); font-size:16px; color:var(--gold); font-weight:700; }
+  .frete-card .hint{ font-size:10px; color:var(--muted); font-family:var(--mono); margin-top:2px; }
+  .frete-card .editpin{ font-size:15px; color:var(--muted); padding:4px 6px; }
+  .item-detail-row.frete-row{ color:var(--gold); }
+
+  .header-dot{
+    width:20px; height:20px; border-radius:50%; background:#c0453f;
+    box-shadow:0 0 0 4px rgba(192,69,63,0.15); transition:all .15s; cursor:pointer;
+  }
+  .header-dot.on{ background:#3fb473; box-shadow:0 0 0 4px rgba(63,180,115,0.18); }
+
+  .brand-row{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:13px 14px; margin-bottom:8px; cursor:pointer;
+  }
+  .brand-row .name{ font-weight:600; font-size:15px; }
+  .brand-row .count{ color:var(--muted); font-size:12px; font-family:var(--mono); margin-top:2px;}
+  .brand-row .chev{ color:var(--muted); font-size:18px; transition:transform .15s; }
+  .brand-row.open .chev{ transform:rotate(90deg); }
+
+  .brand-body{ display:none; padding:2px 2px 10px; }
+  .brand-body.open{ display:block; }
+
+  .product-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 4px; border-bottom:1px solid var(--line); gap:8px; flex-wrap:wrap;
+  }
+  .product-item:last-child{ border-bottom:none; }
+  .product-item .pname{ font-size:14px; font-weight:500; }
+  .product-item .pmeta{ color:var(--muted); font-size:11.5px; font-family:var(--mono); margin-top:3px; }
+  .product-item .pprice{ font-family:var(--mono); font-size:15px; color:var(--gold); font-weight:600; white-space:nowrap; }
+  .product-item .left{ flex:1; min-width:120px; }
+  .product-item .right{ display:flex; align-items:center; gap:8px; }
+
+  .add-qty-btn{
+    width:32px; height:32px; padding:0; background:var(--panel2); color:var(--gold);
+    border:1px solid var(--gold-dim); border-radius:8px; font-size:17px; line-height:1;
+  }
+  .qty-box{ display:flex; align-items:center; gap:6px; }
+  .qty-box button{ width:28px; height:28px; padding:0; background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:7px; font-size:15px; line-height:1;}
+  .qty-box .n{ width:18px; text-align:center; font-family:var(--mono); font-size:13px; }
+
+  form.add-form{ margin-top:8px; display:flex; flex-direction:column; gap:8px; }
+  .row2{ display:flex; gap:8px; }
+  input, select{
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    padding:10px 11px; border-radius:8px; font-size:14px; font-family:var(--sans); width:100%;
+  }
+  input:focus, select:focus{ outline:none; border-color:var(--gold-dim); }
+  input::placeholder{ color:#5b616b; }
+  .field-label{ display:block; font-size:11px; color:var(--muted); margin-bottom:5px; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.6px; }
+  .preview-final{
+    background:var(--panel2); border:1px solid var(--gold-dim); border-radius:8px;
+    padding:11px 13px; font-family:var(--mono); font-size:15px; color:var(--gold); font-weight:700; text-align:center;
+  }
+
+  .attach-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--panel2); border:1px dashed var(--line); border-radius:8px;
+    padding:13px; font-size:14px; color:var(--text); cursor:pointer; position:relative;
+  }
+  .attach-btn input[type="file"]{ position:absolute; inset:0; opacity:0; cursor:pointer; padding:0; }
+  #pixPreviewBox{ margin-top:10px; display:flex; align-items:center; gap:10px; }
+  #pixPreviewBox img{ width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid var(--line); }
+  #pixPreviewPdf{ display:none; align-items:center; gap:8px; width:64px; height:64px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; font-size:26px; justify-content:center; }
+
+  .pix-thumb{ display:flex; align-items:center; gap:8px; margin-top:8px; cursor:pointer; }
+  .pix-thumb img{ width:38px; height:38px; object-fit:cover; border-radius:6px; border:1px solid var(--gold-dim); }
+  .pix-pdf-icon{ width:38px; height:38px; display:flex; align-items:center; justify-content:center; background:var(--panel2); border:1px solid var(--gold-dim); border-radius:6px; font-size:18px; }
+  .pix-thumb span{ font-family:var(--mono); font-size:11px; color:var(--green); }
+
+  button{ font-family:var(--sans); cursor:pointer; border:none; border-radius:8px; font-weight:600; font-size:14px; padding:11px 14px; }
+  .btn-primary{ background:var(--gold); color:#191305; }
+  .btn-primary:active{ background:#b6931f; }
+  .btn-ghost{ background:transparent; color:var(--muted); border:1px solid var(--line); }
+  .btn-ghost:active{ background:var(--panel2); }
+  .btn-blue{ background:var(--blue); color:#0d1b2c; }
+  .btn-danger{ background:transparent; color:var(--red); border:1px solid #3a2320; }
+  .btn-small{ padding:6px 10px; font-size:12px; }
+  .btn-full{ width:100%; }
+
+  /* ---- Clientes (lista simples) ---- */
+  .client-row{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:13px 14px; margin-bottom:8px; cursor:pointer;
+  }
+  .client-row .name{ font-weight:600; font-size:15px; }
+  .client-row .date{ color:var(--muted); font-size:11.5px; font-family:var(--mono); margin-top:2px; }
+  .client-row .chev{ color:var(--muted); font-size:18px; transition:transform .15s; }
+  .client-row.open .chev{ transform:rotate(90deg); }
+  .client-body{ display:none; padding:2px 2px 4px; }
+  .client-body.open{ display:block; }
+
+  /* ---- Clientes ---- */
+  .order-card{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:13px 14px; margin-bottom:8px; }
+  .order-card .head{ display:flex; justify-content:space-between; align-items:center; }
+  .order-card .cust{ font-weight:600; font-size:14.5px; }
+  .order-card .meta{ color:var(--muted); font-size:11.5px; font-family:var(--mono); margin-top:3px; }
+  .order-card .items{ color:var(--muted); font-size:12.5px; margin-top:8px; line-height:1.5; cursor:pointer; display:flex; align-items:center; gap:5px; }
+  .order-card .items .chev{ font-size:10px; color:var(--gold-dim); flex-shrink:0; }
+  .items-detail{ margin-top:8px; border-top:1px dashed var(--line); padding-top:8px; }
+  .item-detail-row{ display:flex; justify-content:space-between; font-family:var(--mono); font-size:12px; padding:3px 0; color:var(--text); }
+  .item-detail-row .u{ color:var(--muted); }
+  .order-card .foot{ display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:10px; border-top:1px solid var(--line); }
+  .order-card .tot{ font-family:var(--mono); font-size:15px; color:var(--gold); font-weight:700; }
+  .order-card .actions{ display:flex; gap:7px; }
+
+  .badge{ font-size:10px; font-family:var(--mono); padding:3px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:0.5px; }
+  .discount-btn{
+    background:transparent; border:1px solid var(--gold-dim); color:var(--gold);
+    font-size:10px; font-family:var(--mono); padding:3px 9px; border-radius:20px;
+    text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap;
+  }
+  .badge.aberto{ background:#22303a; color:var(--blue); }
+  .badge.aguardando{ background:#3a2f14; color:var(--gold); }
+  .badge.pago{ background:#173324; color:var(--green); }
+  .order-card.pago{ border-color:#1f4630; }
+  .pix-line{ font-family:var(--mono); font-size:11px; color:var(--green); margin-top:6px; }
+
+  .empty{ color:var(--muted); font-size:13px; text-align:center; padding:30px 10px; }
+
+  /* ---- Relatorio ---- */
+  .stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+
+  .swipe-stats{
+    display:flex; overflow-x:auto; scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch; touch-action:pan-x; gap:0; margin-bottom:8px;
+    scrollbar-width:none;
+  }
+  .swipe-stats::-webkit-scrollbar{ display:none; }
+  .swipe-card{
+    flex:0 0 100%; scroll-snap-align:start; cursor:pointer;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:16px; text-align:center;
+  }
+  .swipe-dots{ display:flex; justify-content:center; gap:10px; margin-bottom:16px; }
+  .swipe-dots span{ width:6px; height:6px; border-radius:50%; background:var(--line); cursor:pointer; padding:6px; margin:-6px; background-clip:content-box; }
+  .swipe-dots span.on{ background-color:var(--gold); }
+  .stat{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .stat .v{ font-family:var(--mono); font-size:20px; font-weight:700; }
+  .stat .l{ color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:1px; margin-top:3px; }
+  .stat.profit .v{ color:var(--green); }
+
+  .restock-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 12px; border-bottom:1px solid var(--line);
+  }
+  .restock-row:last-child{ border-bottom:none; }
+  .restock-row .n{ font-size:13.5px; }
+  .restock-row .b{ color:var(--muted); font-size:11px; font-family:var(--mono); }
+  .restock-row .q{ font-family:var(--mono); font-size:15px; color:var(--gold); font-weight:700; }
+
+  /* ---- Nav ---- */
+  nav.bottom{
+    position:fixed; bottom:0; left:0; right:0; z-index:30;
+    background:rgba(20,23,28,0.97); backdrop-filter:blur(10px);
+    border-top:1px solid var(--line);
+    display:flex; padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+  }
+  nav.bottom button{
+    flex:1; background:none; border:none; color:var(--muted);
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:7px 2px; border-radius:8px; font-size:10.5px; font-family:var(--sans); font-weight:500;
+  }
+  nav.bottom button .ic{ font-size:18px; }
+  nav.bottom button.active{ color:var(--gold); }
+
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:50;
+    display:none; align-items:flex-end; justify-content:center;
+  }
+  .modal-bg.open{ display:flex; }
+  .modal{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px 16px 0 0;
+    width:100%; max-width:720px; padding:18px 16px calc(18px + env(safe-area-inset-bottom));
+    max-height:85vh; overflow-y:auto;
+  }
+  .modal h3{ margin:0 0 12px; font-size:16px; }
+  .toast{
+    position:fixed; top:14px; left:50%; transform:translateX(-50%);
+    background:var(--gold); color:#191305; font-weight:600; font-size:13px;
+    padding:10px 18px; border-radius:20px; z-index:100; opacity:0; pointer-events:none;
+    transition:opacity .2s, transform .2s; text-align:center; max-width:88%;
+  }
+  .toast.show{ opacity:1; transform:translate(-50%,6px); }
+
+  /* ---- login ---- */
+  .login-screen{
+    position:fixed; inset:0; z-index:999; background:var(--bg);
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    padding:24px;
+  }
+  .login-screen.hidden{ display:none; }
+  .login-icon{
+    width:96px; height:96px; border-radius:22px; overflow:hidden;
+    border:1px solid var(--gold-dim); box-shadow:0 0 40px rgba(212,167,44,0.15);
+    margin-bottom:18px;
+  }
+  .login-icon img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .login-screen h1{ font-size:20px; margin:0 0 2px; letter-spacing:-0.2px; }
+  .login-screen .tag{ color:var(--muted); font-size:12.5px; font-family:var(--mono); margin-bottom:28px; }
+  .login-form{ width:100%; max-width:320px; display:flex; flex-direction:column; gap:10px; }
+  .login-error{ color:var(--red); font-size:12.5px; text-align:center; min-height:16px; margin-top:-2px; }
+  .login-remember{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); padding:2px 2px; cursor:pointer; }
+  .pass-wrap{ position:relative; }
+  .pass-wrap input{ padding-right:42px; }
+  .pass-eye{
+    position:absolute; right:4px; top:50%; transform:translateY(-50%);
+    background:transparent; border:none; color:var(--muted); font-size:16px; padding:8px; line-height:1;
+  }
+  .login-remember input{ width:16px; height:16px; accent-color:var(--gold); }
+
+  /* ---- backup ---- */
+  .backup-btn{
+    background:transparent; border:1px solid var(--line); color:var(--muted);
+    width:34px; height:34px; padding:0; border-radius:8px; font-size:16px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  header.top .top-row{ display:flex; justify-content:space-between; align-items:flex-start; }
+
+</style>
+</head>
+<body>
+
+<div class="login-screen" id="loginScreen">
+  <div class="login-icon"><img src="icon-192.png" alt="Ponto"></div>
+  <h1>Ponto</h1>
+  <div class="tag">acesso ao sistema</div>
+
+  <button type="button" class="btn-primary btn-full" id="biometricBtn" style="display:none; max-width:320px; margin-bottom:14px" onclick="loginWithBiometric()">🔒 Entrar com digital</button>
+  <div id="biometricOr" style="display:none; color:var(--muted); font-size:11px; margin:-6px 0 14px; text-transform:uppercase; letter-spacing:1px">ou entre com usuário e senha</div>
+
+  <form class="login-form" onsubmit="return handleLogin(event)">
+    <label class="field-label">Usuário</label>
+    <input type="text" id="loginUser" placeholder="usuário" autocomplete="username" required style="margin-bottom:12px">
+
+    <label class="field-label">Senha</label>
+    <div class="pass-wrap" style="margin-bottom:12px">
+      <input type="password" id="loginPass" placeholder="senha" autocomplete="current-password" required>
+      <button type="button" class="pass-eye" onclick="togglePassVisibility()" id="passEyeBtn" aria-label="Mostrar senha">👁</button>
+    </div>
+
+    <label class="login-remember">
+      <input type="checkbox" id="loginRemember">
+      <span><b>Manter sessão salva</b> — sem marcar, sempre vai pedir login de novo</span>
+    </label>
+    <label class="login-remember" id="biometricSetupRow" style="display:none">
+      <input type="checkbox" id="biometricSetupCheck">
+      <span>Ativar entrada por digital neste aparelho</span>
+    </label>
+    <div class="login-error" id="loginError"></div>
+    <button class="btn-primary btn-full" type="submit" style="margin-top:4px">Entrar →</button>
+  </form>
+</div>
+
+<header class="top">
+  <div class="top-row">
+    <div class="brand">
+      <span class="mark">PDV</span>
+      <h1>Ponto</h1>
+    </div>
+    <div style="display:flex; align-items:center; gap:9px">
+      <div class="header-dot" id="freteDot" style="display:none" onclick="toggleItensFrete()" title="Frete"></div>
+      <button class="backup-btn" id="siteBtn" style="display:none" onclick="openModal('modalSite')" title="Site">🌐</button>
+      <button class="backup-btn" id="installBtn" onclick="triggerInstall()" title="Instalar" style="display:none">⬇</button>
+      <button class="backup-btn" onclick="toggleBackupPanel()" title="Backup">💾</button>
+    </div>
+  </div>
+  <div class="sub" id="headerSub">vendas & estoque</div>
+</header>
+
+<div class="modal-bg" id="modalBackup" onclick="closeModalBg(event,'modalBackup')">
+  <div class="modal">
+    <h3>Backup dos dados</h3>
+    <p style="color:var(--muted); font-size:12.5px; margin:-6px 0 14px">Todos os dados ficam salvos só neste aparelho. Baixe um backup de vez em quando pra não perder nada.</p>
+    <button class="btn-primary btn-full" onclick="downloadBackup()" style="margin-bottom:10px">⬇ Baixar backup (.json)</button>
+    <label class="attach-btn">
+      <span>📂 Restaurar backup</span>
+      <input type="file" accept="application/json" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="restoreBackupFile(event)">
+    </label>
+    <button class="btn-danger btn-full" style="border:1px solid #3a2320; margin-top:16px" onclick="logoutApp()">🔒 Sair do sistema</button>
+  </div>
+</div>
+
+<main>
+
+  <!-- CLIENTES -->
+  <div class="view active" id="view-clientes">
+    <div class="section-title">Clientes</div>
+    <button class="btn-primary btn-full" style="margin-bottom:12px" onclick="openModal('modalClient')">+ Novo cliente</button>
+    <div id="clientesPickList"></div>
+  </div>
+
+  <!-- MARCAS -->
+  <div class="view" id="view-marcas">
+    <div id="marcasActiveBar"></div>
+    <div class="section-title">Marcas</div>
+    <div id="freteCard"></div>
+    <div id="brandList"></div>
+    <button class="btn-primary btn-full" style="margin-top:10px" onclick="openNewBrandModal()">+ Nova marca</button>
+    <div id="marcasFinishBar"></div>
+  </div>
+
+  <!-- VENDAS -->
+  <div class="view" id="view-vendas">
+    <div class="section-title">Pedidos em aberto</div>
+    <div id="ordersOpenList"></div>
+    <div class="section-title" style="margin-top:22px">Aguardando pagamento</div>
+    <div id="ordersAwaiting"></div>
+    <div class="section-title" style="margin-top:22px">Pagas</div>
+    <div id="ordersPaid"></div>
+  </div>
+
+  <!-- ITENS (resumo do que já foi pago) -->
+  <div class="view" id="view-itens">
+    <div class="section-title">Itens vendidos e pagos</div>
+    <div class="swipe-stats" id="itensSwipeStats" onscroll="itensSwipeScrolled(this)">
+      <div class="swipe-card" onclick="itensToggle()">
+        <div class="l" style="color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:1px">Total <span style="opacity:.6">· toque para ver custo</span></div>
+        <div class="v" id="itensTotalFinal" style="font-family:var(--mono); font-size:24px; font-weight:700; color:var(--gold); margin-top:4px">R$ 0</div>
+        <div id="itensFreteNote" style="display:none; color:var(--gold); font-size:11px; font-family:var(--mono); margin-top:4px">+ frete incluído</div>
+      </div>
+      <div class="swipe-card" onclick="itensToggle()">
+        <div class="l" style="color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:1px">Custo total <span style="opacity:.6">· toque para voltar</span></div>
+        <div class="v" id="itensTotalCost" style="font-family:var(--mono); font-size:24px; font-weight:700; color:var(--text); margin-top:4px">R$ 0</div>
+      </div>
+    </div>
+    <div id="itensList"></div>
+    <div id="itensFinishBtn"></div>
+  </div>
+
+  <!-- RELATORIO -->
+  <div class="view" id="view-relatorio">
+    <div class="section-title">Relatório de vendas</div>
+    <div class="stat-grid">
+      <div class="stat"><div class="v" id="statRevenue">R$ 0</div><div class="l">Faturado</div></div>
+      <div class="stat"><div class="v" id="statCost">R$ 0</div><div class="l">Custo</div></div>
+      <div class="stat profit"><div class="v" id="statProfit">R$ 0</div><div class="l">Lucro</div></div>
+      <div class="stat"><div class="v" id="statCount">0</div><div class="l">Vendas pagas</div></div>
+    </div>
+
+    <div class="section-title">Itens a repor</div>
+    <div class="stat-grid">
+      <div class="stat"><div class="v" id="restockTotalCost">R$ 0</div><div class="l">Custo acumulado</div></div>
+      <div class="stat profit"><div class="v" id="restockTotalFinal">R$ 0</div><div class="l">Valor final acumulado</div></div>
+    </div>
+    <div class="card" id="restockCard" style="padding:4px 12px"></div>
+  </div>
+
+  <!-- HISTORICO (nome de cada cliente + tudo que já comprou) -->
+  <div class="view" id="view-historico">
+    <div class="section-title">Histórico de clientes</div>
+    <input type="text" id="custSearch" placeholder="Buscar por nome..." oninput="renderClientList()">
+    <div id="clientList" style="margin-top:12px"></div>
+  </div>
+
+</main>
+
+<nav class="bottom">
+  <button class="active" data-view="clientes" onclick="switchView('clientes')"><span class="ic">👤</span>Clientes</button>
+  <button data-view="marcas" onclick="switchView('marcas')"><span class="ic">🏷️</span>Marcas</button>
+  <button data-view="vendas" onclick="switchView('vendas')"><span class="ic">🛒</span>Vendas</button>
+  <button data-view="itens" onclick="switchView('itens')"><span class="ic">📦</span>Itens</button>
+  <button data-view="relatorio" onclick="switchView('relatorio')"><span class="ic">📊</span>Relatório</button>
+  <button data-view="historico" onclick="switchView('historico')"><span class="ic">📜</span>Histórico</button>
+</nav>
+
+<!-- MODAL: novo cliente -->
+<div class="modal-bg" id="modalClient" onclick="closeModalBg(event,'modalClient')">
+  <div class="modal">
+    <h3>Novo cliente</h3>
+    <form onsubmit="return submitClient(event)">
+      <input type="text" id="newClientName" placeholder="Nome do cliente" required style="margin-bottom:10px">
+      <button class="btn-primary btn-full" type="submit">Iniciar venda</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: escolher site -->
+<div class="modal-bg" id="modalSite" onclick="closeModalBg(event,'modalSite')">
+  <div class="modal">
+    <h3>Qual site?</h3>
+    <div style="display:flex; flex-direction:column; gap:8px">
+      <button class="btn-ghost btn-full" onclick="window.open('https://app.respectpharma.com.py/prata-v9cn','_blank'); closeModal('modalSite')">🌐 Respect Pharma</button>
+      <button class="btn-ghost btn-full" onclick="window.open('https://medical-brasil.kyte.site','_blank'); closeModal('modalSite')">🌐 Medical Brasil</button>
+      <button class="btn-ghost btn-full" onclick="window.open('https://docs.google.com/spreadsheets/d/1cijAa0Nz95cqIVbmtBgHp_bOrVrncjpPVZwuZHWf-xc/edit?usp=sharing','_blank'); closeModal('modalSite')">🌐 DG Importados</button>
+      <button class="btn-ghost btn-full" onclick="closeModal('modalSite')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: desconto -->
+<div class="modal-bg" id="modalDiscount" onclick="closeModalBg(event,'modalDiscount')">
+  <div class="modal">
+    <h3>Desconto</h3>
+    <p style="color:var(--muted); font-size:12.5px; margin:-6px 0 12px" id="discountOrderInfo"></p>
+    <form onsubmit="return submitDiscount(event)">
+      <label class="field-label">Valor do desconto (R$)</label>
+      <input type="number" step="0.01" min="0" id="discountInput" placeholder="0,00" style="margin-bottom:14px">
+      <button class="btn-primary btn-full" type="submit">Aplicar desconto</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: confirmar pagamento (pix) -->
+<div class="modal-bg" id="modalPix" onclick="closeModalBg(event,'modalPix')">
+  <div class="modal">
+    <h3>Confirmar pagamento</h3>
+    <p style="color:var(--muted); font-size:12.5px; margin:-6px 0 12px" id="pixOrderInfo"></p>
+    <form onsubmit="return submitPixConfirm(event)">
+      <label class="field-label">Comprovante (opcional)</label>
+      <label class="attach-btn" id="attachBtnLabel">
+        <span id="attachBtnText">📎 Anexar comprovante</span>
+        <input type="file" accept="image/*,application/pdf" id="pixFileInput" onchange="handlePixFileSelect(event)">
+      </label>
+      <div id="pixPreviewBox" style="display:none">
+        <img id="pixPreviewImg" alt="comprovante">
+        <div id="pixPreviewPdf">📄</div>
+        <div style="flex:1; min-width:0">
+          <div id="pixPreviewPdfName" style="font-size:12px; color:var(--muted); word-break:break-all"></div>
+        </div>
+        <button type="button" class="btn-ghost btn-small" onclick="clearPixAttachment()">Remover</button>
+      </div>
+      <button class="btn-primary btn-full" type="submit" style="margin-top:14px">Pagamento OK</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: visualizar comprovante em tela cheia -->
+<div class="modal-bg" id="modalImageView" onclick="closeModalBg(event,'modalImageView')">
+  <div class="modal" style="padding:10px; text-align:center">
+    <img id="imageViewSrc" alt="comprovante" style="max-width:100%; border-radius:10px; display:block; margin:0 auto">
+    <button class="btn-ghost btn-full" style="margin-top:12px" onclick="closeModal('modalImageView')">Fechar</button>
+  </div>
+</div>
+
+<!-- MODAL: ações de editar/excluir (toque e segure num item ou marca) -->
+<div class="modal-bg" id="modalItemActions" onclick="closeModalBg(event,'modalItemActions')">
+  <div class="modal">
+    <h3 id="itemActionsTitle">Item</h3>
+    <div style="display:flex; flex-direction:column; gap:8px">
+      <button class="btn-ghost btn-full" onclick="actionEdit()">✏️ Editar</button>
+      <button class="btn-danger btn-full" style="border:1px solid #3a2320" onclick="actionDelete()" id="actionDeleteBtn">🗑️ Excluir</button>
+      <button class="btn-ghost btn-full" onclick="closeModal('modalItemActions')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: editar pedido -->
+<div class="modal-bg" id="modalEditOrder" onclick="closeModalBg(event,'modalEditOrder')">
+  <div class="modal">
+    <h3>Editar pedido</h3>
+    <form onsubmit="return submitOrderEdit(event)">
+      <label class="field-label">Cliente</label>
+      <input type="text" id="editOrderCustomer" required style="margin-bottom:10px">
+      <p id="editOrderStatusNote" style="color:var(--muted); font-size:12px; margin:-4px 0 12px"></p>
+      <label class="field-label">Itens</label>
+      <div id="editOrderItems" style="margin-bottom:14px"></div>
+      <button class="btn-primary btn-full" type="submit">Salvar</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: editar cliente -->
+<div class="modal-bg" id="modalEditClient" onclick="closeModalBg(event,'modalEditClient')">
+  <div class="modal">
+    <h3>Editar cliente</h3>
+    <form onsubmit="return submitClientEdit(event)">
+      <label class="field-label">Nome</label>
+      <input type="text" id="editClientName" required style="margin-bottom:14px">
+      <button class="btn-primary btn-full" type="submit">Salvar</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: nova/editar marca -->
+<div class="modal-bg" id="modalBrand" onclick="closeModalBg(event,'modalBrand')">
+  <div class="modal">
+    <h3 id="modalBrandTitle">Nova marca</h3>
+    <form onsubmit="return submitBrand(event)">
+      <input type="text" id="newBrandName" placeholder="Nome da marca" required style="margin-bottom:10px">
+      <button class="btn-primary btn-full" type="submit" id="submitBrandBtn">Adicionar</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: novo/editar produto -->
+<div class="modal-bg" id="modalProduct" onclick="closeModalBg(event,'modalProduct')">
+  <div class="modal">
+    <h3 id="modalProductTitle">Novo item</h3>
+    <form onsubmit="return submitProduct(event)">
+      <label class="field-label">Nome do produto</label>
+      <input type="text" id="newProdName" placeholder="Ex: Mouse sem fio M220" required style="margin-bottom:12px">
+
+      <div class="row2" style="margin-bottom:12px">
+        <div style="flex:1">
+          <label class="field-label">Valor de custo (R$)</label>
+          <input type="number" step="0.01" min="0" id="newProdCost" placeholder="0,00" required oninput="updateProdPreview()">
+        </div>
+        <div style="flex:1">
+          <label class="field-label">Valor final (R$)</label>
+          <input type="number" step="0.01" min="0" id="newProdFinal" placeholder="0,00" required oninput="updateProdPreview()">
+        </div>
+      </div>
+
+      <label class="field-label">Estoque inicial (quantas unidades você tem)</label>
+      <input type="number" min="0" id="newProdStock" placeholder="0" style="margin-bottom:12px">
+
+      <div class="preview-final" id="prodPreview">Lucro por unidade: R$ 0,00</div>
+
+      <button class="btn-primary btn-full" type="submit" id="submitProductBtn" style="margin-top:12px">Adicionar item</button>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+
+<script>
+function toggleBackupPanel(){ document.getElementById('modalBackup').classList.toggle('open'); }
+
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (ev) => {
+  ev.preventDefault();
+  deferredInstallPrompt = ev;
+  document.getElementById('installBtn').style.display = 'flex';
+});
+function triggerInstall(){
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.finally(() => {
+    deferredInstallPrompt = null;
+    document.getElementById('installBtn').style.display = 'none';
+  });
+}
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBtn').style.display = 'none';
+});
+
+function togglePassVisibility(){
+  const input = document.getElementById('loginPass');
+  const btn = document.getElementById('passEyeBtn');
+  if(input.type==='password'){ input.type='text'; btn.textContent='🙈'; }
+  else { input.type='password'; btn.textContent='👁'; }
+}
+
+function logoutApp(){
+  if(!confirm('Sair do sistema? Vai pedir usuário e senha de novo na próxima vez.')) return;
+  localStorage.removeItem('pdv_auth_ok');
+  sessionStorage.removeItem('pdv_auth_ok');
+  location.reload();
+}
+
+function handleLogin(ev){
+  ev.preventDefault();
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const remember = document.getElementById('loginRemember').checked;
+  const setupBiometric = document.getElementById('biometricSetupCheck').checked;
+  if(u==='texugo' && p==='Krisium'){
+    if(remember){
+      localStorage.setItem('pdv_auth_ok','1');
+    } else {
+      sessionStorage.setItem('pdv_auth_ok','1'); // some quando fecha o app/aba
+      localStorage.removeItem('pdv_auth_ok');
+    }
+    document.getElementById('loginScreen').classList.add('hidden');
+    if(setupBiometric) registerBiometric();
+  } else {
+    document.getElementById('loginError').textContent = 'Usuário ou senha errados';
+  }
+  return false;
+}
+
+if(localStorage.getItem('pdv_auth_ok')==='1' || sessionStorage.getItem('pdv_auth_ok')==='1'){
+  document.getElementById('loginScreen').classList.add('hidden');
+}
+
+// ---------- entrada por digital (WebAuthn) ----------
+function b64encode(buf){
+  return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function b64decode(str){
+  str = str.replace(/-/g,'+').replace(/_/g,'/');
+  while(str.length % 4) str += '=';
+  const bin = atob(str);
+  const buf = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
+
+async function biometricAvailable(){
+  if(!window.PublicKeyCredential || !navigator.credentials) return false;
+  try{ return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
+  catch(e){ return false; }
+}
+
+async function registerBiometric(){
+  try{
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        rp: { name: 'Ponto' },
+        user: {
+          id: crypto.getRandomValues(new Uint8Array(16)),
+          name: 'texugo',
+          displayName: 'Texugo'
+        },
+        pubKeyCredParams: [{ alg:-7, type:'public-key' }, { alg:-257, type:'public-key' }],
+        authenticatorSelection: { authenticatorAttachment:'platform', userVerification:'required' },
+        timeout: 60000
+      }
+    });
+    localStorage.setItem('pdv_biometric_id', b64encode(cred.rawId));
+    toast('Entrada por digital ativada');
+  }catch(e){
+    console.warn('Não foi possível ativar a digital:', e.message);
+  }
+}
+
+async function loginWithBiometric(){
+  const idB64 = localStorage.getItem('pdv_biometric_id');
+  if(!idB64) return;
+  try{
+    await navigator.credentials.get({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        allowCredentials: [{ id: b64decode(idB64), type:'public-key' }],
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+    // digital confirmada pelo aparelho — libera o app só nesta sessão
+    sessionStorage.setItem('pdv_auth_ok','1');
+    document.getElementById('loginScreen').classList.add('hidden');
+  }catch(e){
+    document.getElementById('loginError').textContent = 'Não reconheci a digital — tenta de novo ou usa a senha';
+  }
+}
+
+(async function setupBiometricUI(){
+  const available = await biometricAvailable();
+  if(!available) return;
+  const hasCredential = !!localStorage.getItem('pdv_biometric_id');
+  if(hasCredential){
+    document.getElementById('biometricBtn').style.display = 'block';
+    document.getElementById('biometricOr').style.display = 'block';
+  } else {
+    document.getElementById('biometricSetupRow').style.display = 'flex';
+  }
+})();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.v18.js"></script>
+</body>
+</html>

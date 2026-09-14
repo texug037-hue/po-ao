@@ -10,12 +10,12 @@
 // ==========================================================
 
 const firebaseConfig = {
-  apiKey: "COLE_AQUI",
-  authDomain: "COLE_AQUI",
-  projectId: "COLE_AQUI",
-  storageBucket: "COLE_AQUI",
-  messagingSenderId: "COLE_AQUI",
-  appId: "COLE_AQUI"
+  apiKey: "AIzaSyCtlICY95038yjV6hkRIAJM31Oa6kiGfgM",
+  authDomain: "ponto-vendas-abbdf.firebaseapp.com",
+  projectId: "ponto-vendas-abbdf",
+  storageBucket: "ponto-vendas-abbdf.firebasestorage.app",
+  messagingSenderId: "671508062385",
+  appId: "1:671508062385:web:d094bb012577d6914f8290"
 };
 
 // Conta técnica só pra autenticar o app no Firebase (não é um login de
